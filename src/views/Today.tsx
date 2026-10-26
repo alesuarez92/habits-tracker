@@ -3,8 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, setStatus, type Habit, type Status } from '../db';
 import { addDays, formatDay, todayKey } from '../dates';
 import { computeStats, isSuccess } from '../stats';
+import { useI18n } from '../i18n';
 
 export default function Today({ onAddHabit }: { onAddHabit: () => void }) {
+  const { lang, t } = useI18n();
   const today = todayKey();
   const [day, setDay] = useState(today);
   const habits = useLiveQuery(() => db.habits.filter((h) => !h.archived && h.createdAt <= day).toArray(), [day]);
@@ -19,24 +21,22 @@ export default function Today({ onAddHabit }: { onAddHabit: () => void }) {
     <>
       <header className="page-head">
         <div className="day-nav">
-          <button className="icon-btn" onClick={() => setDay(addDays(day, -1))} aria-label="Previous day">‹</button>
+          <button className="icon-btn" onClick={() => setDay(addDays(day, -1))} aria-label={t.today.prevDay}>‹</button>
           <div>
-            <h1>{day === today ? 'Today' : formatDay(day)}</h1>
-            {day === today && <p className="muted">{formatDay(day)}</p>}
+            <h1>{day === today ? t.today.title : formatDay(day, lang)}</h1>
+            {day === today && <p className="muted">{formatDay(day, lang)}</p>}
           </div>
-          <button className="icon-btn" onClick={() => setDay(addDays(day, 1))} disabled={day >= today} aria-label="Next day">›</button>
+          <button className="icon-btn" onClick={() => setDay(addDays(day, 1))} disabled={day >= today} aria-label={t.today.nextDay}>›</button>
         </div>
         {habits.length > 0 && (
-          <p className="votes">
-            <strong>{votes}</strong> of {habits.length} votes cast for the person you want to become.
-          </p>
+          <p className="votes">{t.today.votes(votes, habits.length)}</p>
         )}
       </header>
 
       {habits.length === 0 ? (
         <div className="empty">
-          <p>“You do not rise to the level of your goals. You fall to the level of your systems.”</p>
-          <button className="primary" onClick={onAddHabit}>Create your first habit</button>
+          <p>{t.today.quote}</p>
+          <button className="primary" onClick={onAddHabit}>{t.today.createFirst}</button>
         </div>
       ) : (
         <ul className="cards">
@@ -63,57 +63,56 @@ function HabitCard({ habit: h, status, stats, showWarning, onSet }: {
   showWarning: boolean;
   onSet: (s: Status) => void;
 }) {
+  const { t } = useI18n();
   const isBuild = h.kind === 'build';
-  const intention = isBuild && (h.time || h.location)
-    ? `I will ${h.name.toLowerCase()}${h.time ? ` at ${h.time}` : ''}${h.location ? ` in ${h.location}` : ''}.`
-    : '';
+  const intention = isBuild && (h.time || h.location) ? t.today.intention(h.name, h.time, h.location) : '';
 
   return (
     <li className={`card ${status ? `is-${status}` : ''}`}>
       <div className="card-head">
         <div>
-          <span className={`tag ${h.kind}`}>{isBuild ? 'Build' : 'Break'}</span>
+          <span className={`tag ${h.kind}`}>{t.kind[h.kind]}</span>
           <h2>{h.name}</h2>
           {h.identity && <p className="identity">{h.identity}</p>}
         </div>
-        <div className="streak" title={`Longest: ${stats.longest} days`}>
+        <div className="streak" title={t.today.longest(stats.longest)}>
           <strong>{stats.current}</strong>
-          <span>day{stats.current === 1 ? '' : 's'}</span>
+          <span>{t.days(stats.current)}</span>
         </div>
       </div>
 
       {isBuild ? (
         <ul className="hints">
           {intention && <li>{intention}</li>}
-          {h.stack && <li>After I {h.stack}.</li>}
-          {h.easy && <li><b>2-min:</b> {h.easy}</li>}
+          {h.stack && <li>{t.today.stack(h.stack)}</li>}
+          {h.easy && <li><b>{t.today.twoMin}</b> {h.easy}</li>}
         </ul>
       ) : (
         <ul className="hints">
-          {h.attractive && <li><b>Cost:</b> {h.attractive}</li>}
-          {h.cue && <li><b>Avoid:</b> {h.cue}</li>}
+          {h.attractive && <li><b>{t.today.cost}</b> {h.attractive}</li>}
+          {h.cue && <li><b>{t.today.avoid}</b> {h.cue}</li>}
         </ul>
       )}
 
       {showWarning && stats.missedYesterday && !status && (
-        <p className="warning">You missed yesterday. Never miss twice — {isBuild && h.easy ? 'just do the 2-minute version.' : 'get back on track today.'}</p>
+        <p className="warning">{t.today.missedYesterday(isBuild && !!h.easy)}</p>
       )}
 
       <div className="actions">
         {isBuild ? (
           <>
-            <button className={status === 'done' ? 'on done' : ''} onClick={() => onSet('done')}>✓ Done</button>
-            <button className={status === 'mini' ? 'on mini' : ''} onClick={() => onSet('mini')}>2-min</button>
-            <button className={status === 'missed' ? 'on missed' : ''} onClick={() => onSet('missed')}>Missed</button>
+            <button className={status === 'done' ? 'on done' : ''} onClick={() => onSet('done')}>{t.today.done}</button>
+            <button className={status === 'mini' ? 'on mini' : ''} onClick={() => onSet('mini')}>{t.today.mini}</button>
+            <button className={status === 'missed' ? 'on missed' : ''} onClick={() => onSet('missed')}>{t.today.missed}</button>
           </>
         ) : (
           <>
-            <button className={status === 'done' ? 'on done' : ''} onClick={() => onSet('done')}>✓ Resisted</button>
-            <button className={status === 'missed' ? 'on missed' : ''} onClick={() => onSet('missed')}>Slipped</button>
+            <button className={status === 'done' ? 'on done' : ''} onClick={() => onSet('done')}>{t.today.resisted}</button>
+            <button className={status === 'missed' ? 'on missed' : ''} onClick={() => onSet('missed')}>{t.today.slipped}</button>
           </>
         )}
       </div>
-      {status && isBuild && h.satisfying && isSuccess(status) && <p className="reward">Reward: {h.satisfying}</p>}
+      {status && isBuild && h.satisfying && isSuccess(status) && <p className="reward">{t.today.reward} {h.satisfying}</p>}
     </li>
   );
 }

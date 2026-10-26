@@ -1,10 +1,12 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { addHabit, db, deleteHabit, emptyDraft, exportData, importData, type Habit, type HabitDraft } from '../db';
+import { addHabit, db, deleteHabit, emptyDraft, exportData, importData, NOT_BACKUP, type Habit, type HabitDraft } from '../db';
+import { useI18n } from '../i18n';
 import { todayKey } from '../dates';
 import HabitForm from './HabitForm';
 
 export default function Habits({ draft, clearDraft }: { draft: HabitDraft | null; clearDraft: () => void }) {
+  const { t } = useI18n();
   const habits = useLiveQuery(() => db.habits.toArray(), []);
   const [editing, setEditing] = useState<Habit | 'new' | null>(draft ? 'new' : null);
 
@@ -18,7 +20,7 @@ export default function Habits({ draft, clearDraft }: { draft: HabitDraft | null
     const initial = editing === 'new' ? (draft ?? emptyDraft()) : editing;
     return (
       <>
-        <header className="page-head"><h1>{editing === 'new' ? 'New habit' : 'Edit habit'}</h1></header>
+        <header className="page-head"><h1>{editing === 'new' ? t.form.newTitle : t.form.editTitle}</h1></header>
         <HabitForm
           initial={initial}
           onCancel={close}
@@ -39,16 +41,16 @@ export default function Habits({ draft, clearDraft }: { draft: HabitDraft | null
   return (
     <>
       <header className="page-head row">
-        <h1>Habits</h1>
-        <button className="primary" onClick={() => setEditing('new')}>+ New</button>
+        <h1>{t.habits.title}</h1>
+        <button className="primary" onClick={() => setEditing('new')}>{t.habits.new}</button>
       </header>
 
-      {active.length === 0 && <p className="empty">No active habits yet. Start small: a habit you can do in two minutes.</p>}
+      {active.length === 0 && <p className="empty">{t.habits.empty}</p>}
       <HabitList habits={active} onEdit={setEditing} />
 
       {archived.length > 0 && (
         <>
-          <h2 className="section">Archived</h2>
+          <h2 className="section">{t.habits.archived}</h2>
           <HabitList habits={archived} onEdit={setEditing} />
         </>
       )}
@@ -59,20 +61,21 @@ export default function Habits({ draft, clearDraft }: { draft: HabitDraft | null
 }
 
 function HabitList({ habits, onEdit }: { habits: Habit[]; onEdit: (h: Habit) => void }) {
+  const { t } = useI18n();
   return (
     <ul className="list">
       {habits.map((h) => (
         <li key={h.id}>
           <div>
-            <span className={`tag ${h.kind}`}>{h.kind === 'build' ? 'Build' : 'Break'}</span>
+            <span className={`tag ${h.kind}`}>{t.kind[h.kind]}</span>
             <strong>{h.name}</strong>
             {h.identity && <p className="identity">{h.identity}</p>}
           </div>
           <div className="row-actions">
-            <button onClick={() => onEdit(h)}>Edit</button>
-            <button onClick={() => db.habits.update(h.id, { archived: !h.archived })}>{h.archived ? 'Restore' : 'Archive'}</button>
+            <button onClick={() => onEdit(h)}>{t.habits.edit}</button>
+            <button onClick={() => db.habits.update(h.id, { archived: !h.archived })}>{h.archived ? t.habits.restore : t.habits.archive}</button>
             {h.archived && (
-              <button className="danger" onClick={() => confirm(`Delete "${h.name}" and all its history?`) && deleteHabit(h.id)}>Delete</button>
+              <button className="danger" onClick={() => confirm(t.habits.confirmDelete(h.name)) && deleteHabit(h.id)}>{t.habits.delete}</button>
             )}
           </div>
         </li>
@@ -82,6 +85,7 @@ function HabitList({ habits, onEdit }: { habits: Habit[]; onEdit: (h: Habit) => 
 }
 
 function Backup() {
+  const { t } = useI18n();
   const fileInput = useRef<HTMLInputElement>(null);
 
   const download = async () => {
@@ -96,22 +100,22 @@ function Backup() {
   const restore = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !confirm('Replace all current data with this backup?')) return;
+    if (!file || !confirm(t.habits.confirmImport)) return;
     try {
       await importData(JSON.parse(await file.text()));
-      alert('Backup restored.');
+      alert(t.habits.restored);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Could not read that file.');
+      alert(err instanceof Error && err.message === NOT_BACKUP ? t.habits.notBackup : t.habits.readError);
     }
   };
 
   return (
     <section className="backup">
-      <h2 className="section">Backup</h2>
-      <p className="muted">Your data lives only on this device. Export a backup now and then.</p>
+      <h2 className="section">{t.habits.backup}</h2>
+      <p className="muted">{t.habits.backupNote}</p>
       <div className="row-actions">
-        <button onClick={download}>Export</button>
-        <button onClick={() => fileInput.current?.click()}>Import</button>
+        <button onClick={download}>{t.habits.export}</button>
+        <button onClick={() => fileInput.current?.click()}>{t.habits.import}</button>
         <input ref={fileInput} type="file" accept="application/json" hidden onChange={restore} />
       </div>
     </section>

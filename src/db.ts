@@ -82,6 +82,8 @@ export async function setStatus(habitId: number, date: string, status: Status | 
   }
 }
 
+export const NOT_BACKUP = 'not-a-habits-backup';
+
 interface Backup {
   app: 'habits-tracker';
   version: 1;
@@ -99,7 +101,7 @@ export async function exportData(): Promise<Backup> {
 export async function importData(data: unknown): Promise<void> {
   const backup = data as Partial<Backup>;
   if (backup.app !== 'habits-tracker' || !Array.isArray(backup.habits) || !Array.isArray(backup.entries) || !Array.isArray(backup.scorecard)) {
-    throw new Error('This file is not a Habits backup.');
+    throw new Error(NOT_BACKUP);
   }
   await db.transaction('rw', db.habits, db.entries, db.scorecard, async () => {
     await Promise.all([db.habits.clear(), db.entries.clear(), db.scorecard.clear()]);
