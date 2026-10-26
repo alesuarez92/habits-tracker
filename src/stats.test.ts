@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeStats } from './stats';
+import { computeStats, summarize } from './stats';
 import { addDays, daysBetween } from './dates';
 import type { Status } from './db';
 
@@ -42,9 +42,36 @@ describe('computeStats', () => {
   });
 });
 
+describe('last7', () => {
+  it('counts successes in the last seven days only', () => {
+    const s = computeStats(log([-9, 'done'], [-6, 'done'], [-3, 'mini'], [-1, 'missed'], [0, 'done']), addDays(T, -20), T);
+    expect(s.last7).toBe(3);
+  });
+});
+
 describe('daysBetween', () => {
   it('handles month and DST boundaries', () => {
     expect(daysBetween('2026-02-27', '2026-03-02')).toBe(3);
     expect(daysBetween('2026-03-07', '2026-03-09')).toBe(2);
+  });
+});
+
+describe('summarize', () => {
+  it('adds up votes per identity, falling back to the habit name', () => {
+    const habits = [
+      { id: 1, name: 'Read', identity: 'I am a reader', createdAt: addDays(T, -5) },
+      { id: 2, name: 'Read the news', identity: 'I am a reader', createdAt: addDays(T, -5) },
+      { id: 3, name: 'Walk', identity: '', createdAt: addDays(T, -5) },
+    ];
+    const entries = [
+      { habitId: 1, date: addDays(T, -1), status: 'done' as const },
+      { habitId: 2, date: T, status: 'mini' as const },
+      { habitId: 3, date: T, status: 'missed' as const },
+    ];
+    const { identities } = summarize(habits, entries, T);
+    expect(identities).toEqual([
+      { name: 'I am a reader', votes: 2, recent: 2, votedToday: true },
+      { name: 'Walk', votes: 0, recent: 0, votedToday: false },
+    ]);
   });
 });

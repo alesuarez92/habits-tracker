@@ -1,8 +1,10 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Entry, type Habit, type Status } from '../db';
 import { addDays, fromKey, todayKey } from '../dates';
-import { computeStats } from '../stats';
+import { summarize } from '../stats';
 import { useI18n } from '../i18n';
+import { AtomIcon, Molecule } from '../atoms';
+import { PageHead } from '../ui';
 
 const WEEKS = 12;
 
@@ -13,40 +15,34 @@ export default function Progress() {
   if (!habits || !entries) return null;
 
   const today = todayKey();
-  const rows = habits.map((h) => {
-    const own = entries.filter((e) => e.habitId === h.id);
-    return { habit: h, entries: own, stats: computeStats(own, h.createdAt, today) };
-  });
-
-  // Every successful day is a vote for the identity behind the habit.
-  const identities = new Map<string, number>();
-  for (const r of rows) {
-    const name = r.habit.identity.trim() || r.habit.name;
-    identities.set(name, (identities.get(name) ?? 0) + r.stats.votes);
-  }
+  const { rows, identities } = summarize(habits, entries, today);
 
   return (
     <>
-      <header className="page-head"><h1>{t.progress.title}</h1></header>
+      <PageHead title={t.progress.title} />
 
       {rows.length === 0 ? (
         <p className="empty">{t.progress.empty}</p>
       ) : (
         <>
-          <h2 className="section">{t.progress.identityVotes}</h2>
-          <ul className="identities">
-            {[...identities].sort((a, b) => b[1] - a[1]).map(([name, votes]) => (
-              <li key={name}><span>{name}</span><strong>{votes}</strong></li>
-            ))}
-          </ul>
+          <section className="card identity-card">
+            <Molecule identities={identities} label={t.today.moleculeLabel(identities.map((i) => `${i.name} ${i.votes}`).join(', '))} />
+            <h2 className="section">{t.progress.identityVotes}</h2>
+            <ul className="identities">
+              {identities.map((i) => (
+                <li key={i.name}><span>{i.name}</span><strong>{i.votes}</strong></li>
+              ))}
+            </ul>
+          </section>
 
           <h2 className="section">{t.progress.lastWeeks(WEEKS)}</h2>
-          <ul className="cards">
-            {rows.map(({ habit, entries, stats }) => (
-              <li key={habit.id} className="card">
-                <div className="card-head">
-                  <div>
-                    <span className={`tag ${habit.kind}`}>{t.kind[habit.kind]}</span>
+          <ul className="stack">
+            {rows.map(({ habit, stats }) => (
+              <li key={habit.id} className={`card habit-card ${habit.kind}`}>
+                <div className="habit-row">
+                  <AtomIcon kind={habit.kind} particles={stats.last7} active={false} />
+                  <div className="habit-text">
+                    <span className="eyebrow">{t.kind[habit.kind]}</span>
                     <h2>{habit.name}</h2>
                   </div>
                 </div>
@@ -56,13 +52,15 @@ export default function Progress() {
                   <div><dt>{t.progress.rate30}</dt><dd>{Math.round(stats.rate30 * 100)}%</dd></div>
                   <div><dt>{t.progress.votes}</dt><dd>{stats.votes}</dd></div>
                 </dl>
-                <Heatmap habit={habit} entries={entries} today={today} />
+                <DotGrid habit={habit} entries={entries.filter((e) => e.habitId === habit.id)} today={today} />
               </li>
             ))}
           </ul>
           <p className="legend">
-            <span className="cell done" /> {t.progress.legendDone} <span className="cell mini" /> {t.progress.legendMini}{' '}
-            <span className="cell missed" /> {t.progress.legendMissed} <span className="cell" /> {t.progress.legendNone}
+            <span className="dot done" /> {t.progress.legendDone}
+            <span className="dot mini" /> {t.progress.legendMini}
+            <span className="dot missed" /> {t.progress.legendMissed}
+            <span className="dot" /> {t.progress.legendNone}
           </p>
         </>
       )}
@@ -70,7 +68,7 @@ export default function Progress() {
   );
 }
 
-function Heatmap({ habit, entries, today }: { habit: Habit; entries: Entry[]; today: string }) {
+function DotGrid({ habit, entries, today }: { habit: Habit; entries: Entry[]; today: string }) {
   const { t } = useI18n();
   const byDate = new Map<string, Status>(entries.map((e) => [e.date, e.status]));
   // Start on a Sunday so each column is one week.
@@ -79,9 +77,9 @@ function Heatmap({ habit, entries, today }: { habit: Habit; entries: Entry[]; to
   for (let d = start; d <= today; d = addDays(d, 1)) days.push(d);
 
   return (
-    <div className="heatmap" role="img" aria-label={t.progress.heatmap(habit.name, WEEKS)}>
+    <div className="dot-grid" role="img" aria-label={t.progress.heatmap(habit.name, WEEKS)}>
       {days.map((d) => (
-        <span key={d} title={d} className={`cell ${byDate.get(d) ?? ''} ${d < habit.createdAt ? 'before' : ''}`} />
+        <span key={d} title={d} className={`dot ${byDate.get(d) ?? ''}${d < habit.createdAt ? ' before' : ''}${d === today ? ' today' : ''}`} />
       ))}
     </div>
   );

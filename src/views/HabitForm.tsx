@@ -18,22 +18,24 @@ export default function HabitForm({ initial, onSave, onCancel }: {
 
   return (
     <form className="habit-form" onSubmit={submit}>
-      <div className="segmented" role="radiogroup" aria-label={t.form.type}>
+      <div className="segmented wide" role="radiogroup" aria-label={t.form.type}>
         <button type="button" role="radio" aria-checked={d.kind === 'build'} className={d.kind === 'build' ? 'on' : ''} onClick={() => set('kind', 'build')}>{t.form.buildHabit}</button>
         <button type="button" role="radio" aria-checked={d.kind === 'break'} className={d.kind === 'break' ? 'on' : ''} onClick={() => set('kind', 'break')}>{t.form.breakHabit}</button>
       </div>
 
-      <label>
-        {t.form.habit}
-        <input required autoFocus value={d.name} onChange={(e) => set('name', e.target.value)} placeholder={t.form.habitPlaceholder[d.kind]} />
-      </label>
-      <label>
-        {t.form.identity}
-        <input value={d.identity} onChange={(e) => set('identity', e.target.value)} placeholder={t.form.identityPlaceholder[d.kind]} />
-      </label>
+      <div className="card form-card">
+        <label>
+          {t.form.habit}
+          <input required autoFocus value={d.name} onChange={(e) => set('name', e.target.value)} placeholder={t.form.habitPlaceholder[d.kind]} />
+        </label>
+        <label>
+          {t.form.identity}
+          <input value={d.identity} onChange={(e) => set('identity', e.target.value)} placeholder={t.form.identityPlaceholder[d.kind]} />
+        </label>
+      </div>
 
       {t.form.laws[d.kind].map((law) => (
-        <fieldset key={law.title}>
+        <fieldset key={law.title} className="card form-card">
           <legend>{law.title}</legend>
           {law.fields.map((f) => (
             <label key={f.key}>
@@ -45,8 +47,8 @@ export default function HabitForm({ initial, onSave, onCancel }: {
       ))}
 
       <div className="form-actions">
-        <button type="button" onClick={onCancel}>{t.form.cancel}</button>
-        <button type="submit" className="primary">{t.form.save}</button>
+        <button type="button" className="btn quiet" onClick={onCancel}>{t.form.cancel}</button>
+        <button type="submit" className="btn primary">{t.form.save}</button>
       </div>
     </form>
   );

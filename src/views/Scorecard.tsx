@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, emptyDraft, type HabitDraft, type Rating } from '../db';
 import { todayKey } from '../dates';
 import { useI18n } from '../i18n';
+import { PageHead } from '../ui';
+import { Icon } from '../atoms';
 
 const RATINGS: { value: Rating; key: 'good' | 'neutral' | 'bad' }[] = [
   { value: '+', key: 'good' },
@@ -27,19 +29,17 @@ export default function Scorecard({ onCreateHabit }: { onCreateHabit: (d: HabitD
 
   return (
     <>
-      <header className="page-head">
-        <h1>{t.scorecard.title}</h1>
-        <p className="muted">{t.scorecard.intro}</p>
-      </header>
+      <PageHead title={t.scorecard.title} />
+      <p className="muted intro">{t.scorecard.intro}</p>
 
       <form className="add-row" onSubmit={add}>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder={t.scorecard.placeholder} aria-label={t.scorecard.inputLabel} />
-        <button type="submit" className="primary">{t.scorecard.add}</button>
+        <button type="submit" className="btn primary">{t.scorecard.add}</button>
       </form>
 
-      <ol className="list scorecard">
+      <ol className="stack scorecard">
         {items.map((item) => (
-          <li key={item.id}>
+          <li key={item.id} className="card score-item">
             <span className={`score r${item.rating === '+' ? 'good' : item.rating === '-' ? 'bad' : 'neutral'}`}>{item.text}</span>
             <div className="row-actions">
               <div className="segmented small" role="radiogroup" aria-label={t.scorecard.rate(item.text)}>
@@ -56,8 +56,8 @@ export default function Scorecard({ onCreateHabit }: { onCreateHabit: (d: HabitD
                   </button>
                 ))}
               </div>
-              {item.rating === '-' && <button onClick={() => onCreateHabit(emptyDraft('break', item.text))}>{t.scorecard.breakIt}</button>}
-              <button className="danger" aria-label={t.scorecard.remove(item.text)} onClick={() => db.scorecard.delete(item.id)}>✕</button>
+              {item.rating === '-' && <button className="chip break" onClick={() => onCreateHabit(emptyDraft('break', item.text))}>{t.scorecard.breakIt}</button>}
+              <button className="icon-btn round" aria-label={t.scorecard.remove(item.text)} onClick={() => db.scorecard.delete(item.id)}><Icon name="x" size={16} /></button>
             </div>
           </li>
         ))}
