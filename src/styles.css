@@ -6,6 +6,8 @@
   --muted: #5b5e7a;
   --accent: #4338ca;
   --accent-2: #6157e6;
+  --accent-hi: #8f88ff;
+  --break-hi: #fb923c;
   --on-accent: #ffffff;
   --break: #c2410c;
   --break-soft: #fdebdd;
@@ -29,6 +31,8 @@
     --muted: #a3a6c2;
     --accent: #8b85ff;
     --accent-2: #6e67f0;
+    --accent-hi: #c9c5ff;
+    --break-hi: #fdba74;
     --on-accent: #0d0e1c;
     --break: #fb923c;
     --break-soft: #3a2416;
@@ -172,26 +176,36 @@ input:focus { border-color: var(--accent); outline: none; }
 
 /* Atoms */
 .atom { flex-shrink: 0; overflow: visible; }
-.atom-orbit { fill: none; stroke: var(--accent); stroke-opacity: 0.3; stroke-width: 1.5; }
-.atom-nucleus { fill: none; stroke: var(--accent); stroke-width: 2; transition: fill 0.25s; }
-.atom.active .atom-nucleus { fill: var(--accent); }
-.atom-particle { fill: var(--accent); }
-.atom.break .atom-orbit { stroke: var(--break); stroke-dasharray: 2 4; }
-.atom.break .atom-nucleus { stroke: var(--break); stroke-dasharray: 3 2; fill: var(--break-soft); }
-.atom.break.active .atom-nucleus { fill: var(--break); stroke-dasharray: none; }
-.atom.break .atom-particle { fill: var(--break); }
+.orbit-ring { fill: none; stroke: var(--accent); stroke-opacity: 0.22; stroke-width: 1.2; }
+.orbit-ring.outer { stroke-dasharray: 1.5 3.5; stroke-opacity: 0.35; }
+.particle { fill: var(--accent); }
+.particle-halo { fill: var(--accent); opacity: 0.22; animation: halo 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+.nucleus-glow { fill: var(--accent); opacity: 0.14; }
+.orbit-spin { animation: orbit linear infinite; transform-box: view-box; }
+@keyframes orbit { to { transform: rotate(360deg); } }
+@keyframes halo { 50% { transform: scale(1.6); opacity: 0.06; } }
+@media (prefers-reduced-motion: reduce) {
+  .orbit-spin, .particle-halo { animation: none; }
+}
 
-.molecule { width: 100%; height: auto; display: block; }
-.mol-bond { stroke: var(--bond); stroke-width: 4; stroke-linecap: round; }
-.mol-orbit { fill: none; stroke: var(--accent); stroke-opacity: 0.25; stroke-width: 1.5; }
-.mol-nucleus { fill: var(--accent-2); }
-.mol-nucleus.center { fill: var(--accent); }
-.mol-particle { fill: var(--accent); }
-.mol-halo { fill: var(--accent); opacity: 0.2; animation: halo 2.4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-.mol-count { fill: var(--on-accent); font: 700 12px var(--font-body); }
+.stop-hi { stop-color: var(--accent-hi); }
+.stop-base { stop-color: var(--accent); }
+.satellite .stop-hi { stop-color: var(--accent-hi); }
+.satellite .stop-base { stop-color: var(--accent-2); }
+.break .stop-hi { stop-color: var(--break-hi); }
+.break .stop-base { stop-color: var(--break); }
+
+.atom-nucleus { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.atom.active .atom-nucleus { stroke: none; }
+.atom.break .orbit-ring { stroke: var(--break); }
+.atom.break .particle, .atom.break .nucleus-glow { fill: var(--break); }
+.atom.break .atom-nucleus { stroke: var(--break); stroke-dasharray: 3 2; }
+
+.molecule { width: 100%; height: auto; display: block; overflow: visible; }
+.mol-bond { stroke: var(--bond); stroke-width: 3; stroke-linecap: round; }
+.mol-count { fill: var(--on-accent); font: 700 10px var(--font-body); }
+.mol-count.center { font-size: 13px; }
 .mol-label { fill: var(--muted); font: 700 11px var(--font-body); }
-@keyframes halo { 50% { transform: scale(1.5); opacity: 0.08; } }
-@media (prefers-reduced-motion: reduce) { .mol-halo { animation: none; } }
 
 /* Habits */
 .new-habit {
