@@ -3,11 +3,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { addHabit, db, deleteHabit, emptyDraft, exportData, importData, NOT_BACKUP, type Habit, type HabitDraft } from '../db';
 import { useI18n } from '../i18n';
 import { todayKey } from '../dates';
+import { summarize, type HabitStats } from '../stats';
+import { AtomIcon, Icon } from '../atoms';
+import { PageHead } from '../ui';
 import HabitForm from './HabitForm';
 
 export default function Habits({ draft, clearDraft }: { draft: HabitDraft | null; clearDraft: () => void }) {
   const { t } = useI18n();
   const habits = useLiveQuery(() => db.habits.toArray(), []);
+  const entries = useLiveQuery(() => db.entries.toArray(), []);
   const [editing, setEditing] = useState<Habit | 'new' | null>(draft ? 'new' : null);
 
   const close = () => {
@@ -20,7 +24,7 @@ export default function Habits({ draft, clearDraft }: { draft: HabitDraft | null
     const initial = editing === 'new' ? (draft ?? emptyDraft()) : editing;
     return (
       <>
-        <header className="page-head"><h1>{editing === 'new' ? t.form.newTitle : t.form.editTitle}</h1></header>
+        <PageHead title={editing === 'new' ? t.form.newTitle : t.form.editTitle} />
         <HabitForm
           initial={initial}
           onCancel={close}
@@ -34,24 +38,26 @@ export default function Habits({ draft, clearDraft }: { draft: HabitDraft | null
     );
   }
 
-  if (!habits) return null;
+  if (!habits || !entries) return null;
+  const stats = new Map(summarize(habits, entries, todayKey()).rows.map((r) => [r.habit.id, r.stats]));
   const active = habits.filter((h) => !h.archived);
   const archived = habits.filter((h) => h.archived);
 
   return (
     <>
-      <header className="page-head row">
-        <h1>{t.habits.title}</h1>
-        <button className="primary" onClick={() => setEditing('new')}>{t.habits.new}</button>
-      </header>
+      <PageHead title={t.habits.title} />
+      <button className="new-habit" onClick={() => setEditing('new')}>
+        <Icon name="plus" size={20} />
+        {t.habits.new}
+      </button>
 
       {active.length === 0 && <p className="empty">{t.habits.empty}</p>}
-      <HabitList habits={active} onEdit={setEditing} />
+      <HabitList habits={active} stats={stats} onEdit={setEditing} />
 
       {archived.length > 0 && (
         <>
           <h2 className="section">{t.habits.archived}</h2>
-          <HabitList habits={archived} onEdit={setEditing} />
+          <HabitList habits={archived} stats={stats} onEdit={setEditing} />
         </>
       )}
 
@@ -60,22 +66,25 @@ export default function Habits({ draft, clearDraft }: { draft: HabitDraft | null
   );
 }
 
-function HabitList({ habits, onEdit }: { habits: Habit[]; onEdit: (h: Habit) => void }) {
+function HabitList({ habits, stats, onEdit }: { habits: Habit[]; stats: Map<number, HabitStats>; onEdit: (h: Habit) => void }) {
   const { t } = useI18n();
   return (
-    <ul className="list">
+    <ul className="stack">
       {habits.map((h) => (
-        <li key={h.id}>
-          <div>
-            <span className={`tag ${h.kind}`}>{t.kind[h.kind]}</span>
-            <strong>{h.name}</strong>
-            {h.identity && <p className="identity">{h.identity}</p>}
+        <li key={h.id} className={`card habit-card ${h.kind}${h.archived ? ' archived' : ''}`}>
+          <div className="habit-row">
+            <AtomIcon kind={h.kind} particles={stats.get(h.id)?.last7 ?? 0} active={false} />
+            <div className="habit-text">
+              <span className="eyebrow">{t.kind[h.kind]}</span>
+              <h2>{h.name}</h2>
+              {h.identity && <p className="muted">{h.identity}</p>}
+            </div>
           </div>
-          <div className="row-actions">
-            <button onClick={() => onEdit(h)}>{t.habits.edit}</button>
-            <button onClick={() => db.habits.update(h.id, { archived: !h.archived })}>{h.archived ? t.habits.restore : t.habits.archive}</button>
+          <div className="chips">
+            <button className="chip" onClick={() => onEdit(h)}>{t.habits.edit}</button>
+            <button className="chip" onClick={() => db.habits.update(h.id, { archived: !h.archived })}>{h.archived ? t.habits.restore : t.habits.archive}</button>
             {h.archived && (
-              <button className="danger" onClick={() => confirm(t.habits.confirmDelete(h.name)) && deleteHabit(h.id)}>{t.habits.delete}</button>
+              <button className="chip danger" onClick={() => confirm(t.habits.confirmDelete(h.name)) && deleteHabit(h.id)}>{t.habits.delete}</button>
             )}
           </div>
         </li>
@@ -110,12 +119,12 @@ function Backup() {
   };
 
   return (
-    <section className="backup">
-      <h2 className="section">{t.habits.backup}</h2>
+    <section className="card backup">
+      <h2>{t.habits.backup}</h2>
       <p className="muted">{t.habits.backupNote}</p>
-      <div className="row-actions">
-        <button onClick={download}>{t.habits.export}</button>
-        <button onClick={() => fileInput.current?.click()}>{t.habits.import}</button>
+      <div className="chips">
+        <button className="chip" onClick={download}>{t.habits.export}</button>
+        <button className="chip" onClick={() => fileInput.current?.click()}>{t.habits.import}</button>
         <input ref={fileInput} type="file" accept="application/json" hidden onChange={restore} />
       </div>
     </section>
