@@ -68,7 +68,14 @@ function NucleusGradient({ id, variant }: { id: string; variant: string }) {
  * A habit as an atom: the nucleus lights up once today is done, and one particle
  * orbits it for each successful day in the last week (2 on the inner shell, 5 on the outer).
  */
-export function AtomIcon({ kind, particles, active, size = 48 }: { kind: HabitKind; particles: number; active: boolean; size?: number }) {
+export function AtomIcon({ kind, particles, active, burst = 0, size = 48 }: {
+  kind: HabitKind;
+  particles: number;
+  active: boolean;
+  /** Changes each time a vote is cast here, replaying the celebration. */
+  burst?: number;
+  size?: number;
+}) {
   const id = useSvgId();
   const shells = fillShells(Math.min(particles, 7), [13, 20.5], [2, 5], [7, 12]);
 
@@ -77,7 +84,8 @@ export function AtomIcon({ kind, particles, active, size = 48 }: { kind: HabitKi
       <defs><NucleusGradient id={id} variant={kind} /></defs>
       <Orbits cx={24} cy={24} shells={shells} dotR={2.4} />
       {active && <circle cx="24" cy="24" r="11.5" className="nucleus-glow" />}
-      <circle cx="24" cy="24" r="7.5" className="atom-nucleus" style={active ? { fill: `url(#${id})` } : undefined} />
+      {burst > 0 && <circle key={`w${burst}`} cx="24" cy="24" r="9" className="shockwave" />}
+      <circle key={`n${burst}`} cx="24" cy="24" r="7.5" className={burst > 0 ? 'atom-nucleus pulse' : 'atom-nucleus'} style={active ? { fill: `url(#${id})` } : undefined} />
     </svg>
   );
 }
