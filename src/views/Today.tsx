@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, setStatus, type Habit, type Status } from '../db';
 import { addDays, formatDay, todayKey } from '../dates';
@@ -11,6 +11,13 @@ export default function Today({ onAddHabit }: { onAddHabit: () => void }) {
   const { lang, t } = useI18n();
   const today = todayKey();
   const [day, setDay] = useState(today);
+  const [toast, setToast] = useState<{ text: string; perfect: boolean; key: number } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(timer);
+  }, [toast]);
   const habits = useLiveQuery(() => db.habits.filter((h) => !h.archived).toArray(), []);
   const entries = useLiveQuery(() => db.entries.toArray(), []);
 
@@ -21,6 +28,20 @@ export default function Today({ onAddHabit }: { onAddHabit: () => void }) {
   const dayEntries = new Map(entries.filter((e) => e.date === day).map((e) => [e.habitId, e.status]));
   const doneToday = rows.filter((r) => entries.some((e) => e.habitId === r.habit.id && e.date === today && isSuccess(e.status))).length;
   const totalVotes = identities.reduce((sum, i) => sum + i.votes, 0);
+  const perfect = rows.length > 0 && doneToday === rows.length;
+
+  // The fourth law: make it satisfying. Celebrate each vote the moment it's cast.
+  const cast = (habit: Habit, previous: Status | undefined, next: Status | null) => {
+    setStatus(habit.id, day, next);
+    if (!isSuccess(next ?? undefined) || isSuccess(previous)) return;
+    navigator.vibrate?.(15);
+    const completesDay = day === today && doneToday + 1 === rows.length;
+    setToast({
+      text: completesDay ? t.today.perfectToast : t.today.voteToast(habit.identity.trim() || habit.name),
+      perfect: completesDay,
+      key: Date.now(),
+    });
+  };
 
   return (
     <>
@@ -40,11 +61,11 @@ export default function Today({ onAddHabit }: { onAddHabit: () => void }) {
         </div>
       ) : (
         <>
-          <section className="card identity-card">
+          <section className={`card identity-card${perfect ? ' perfect' : ''}`}>
             <Molecule identities={identities} label={t.today.moleculeLabel(identities.map((i) => `${i.name} ${i.votes}`).join(', '))} />
             <div className="identity-text">
               <h2>{identities[0].name}</h2>
-              <span className="pill">{t.today.todayCount(doneToday, rows.length)}</span>
+              <span className="pill">{perfect ? t.today.perfectDay : t.today.todayCount(doneToday, rows.length)}</span>
             </div>
             <p className="muted">{t.today.identityCaption(totalVotes)}</p>
           </section>
@@ -57,12 +78,16 @@ export default function Today({ onAddHabit }: { onAddHabit: () => void }) {
                 stats={stats}
                 status={dayEntries.get(habit.id)}
                 showWarning={day === today}
-                onSet={(s) => setStatus(habit.id, day, s)}
+                onSet={(s) => cast(habit, dayEntries.get(habit.id), s)}
               />
             ))}
           </ul>
         </>
       )}
+
+      <div className="toast-region" aria-live="polite">
+        {toast && <div key={toast.key} className={toast.perfect ? 'toast perfect' : 'toast'}>{toast.text}</div>}
+      </div>
     </>
   );
 }
@@ -75,15 +100,20 @@ function HabitCard({ habit: h, status, stats, showWarning, onSet }: {
   onSet: (s: Status | null) => void;
 }) {
   const { t } = useI18n();
+  const [burst, setBurst] = useState(0);
   const isBuild = h.kind === 'build';
   const streak = stats.current > 0 ? t.today.streak(stats.current) : '';
   const details = (isBuild ? [h.time, h.location, streak] : [h.identity || h.attractive, streak]).filter(Boolean).join(' · ');
-  const toggle = (s: Status) => onSet(status === s ? null : s);
+  const set = (next: Status | null) => {
+    if (isSuccess(next ?? undefined) && !isSuccess(status)) setBurst(Date.now());
+    onSet(next);
+  };
+  const toggle = (s: Status) => set(status === s ? null : s);
 
   return (
     <li className={`card habit-card ${h.kind}`}>
       <div className="habit-row">
-        <AtomIcon kind={h.kind} particles={stats.last7} active={isSuccess(status)} />
+        <AtomIcon kind={h.kind} particles={stats.last7} active={isSuccess(status)} burst={burst} />
         <div className="habit-text">
           {!isBuild && <span className="eyebrow">{t.today.breaking}</span>}
           <h2>{h.name}</h2>
@@ -92,7 +122,7 @@ function HabitCard({ habit: h, status, stats, showWarning, onSet }: {
         <div className="habit-actions">
           {isBuild ? (
             status ? (
-              <button className={`btn ${status === 'missed' ? 'quiet' : 'primary'}`} aria-pressed="true" onClick={() => onSet(null)}>
+              <button className={`btn ${status === 'missed' ? 'quiet' : 'primary'}`} aria-pressed="true" onClick={() => set(null)}>
                 {status !== 'missed' && <Icon name="check" size={16} />}
                 {status === 'done' ? t.today.done : status === 'mini' ? t.today.mini : t.today.missed}
               </button>
