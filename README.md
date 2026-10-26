@@ -18,6 +18,7 @@ Also included:
 - **Habits Scorecard.** List your current daily habits and rate them +, = or −. Any − item can become a "break" habit in one tap.
 - **Progress.** Streaks, 30-day rate and a 12-week heatmap for each habit.
 - **Backup.** Export and import your data as JSON from the Habits tab.
+- **English / Español.** The whole interface is available in both languages. The app starts in your device's language and the EN/ES switch at the top of every screen remembers your choice.
 
 ## Development
 
@@ -27,6 +28,8 @@ npm run dev     # local dev server
 npm test        # unit tests (streak logic)
 npm run build   # production build in dist/
 ```
+
+All interface text lives in `src/i18n.tsx`. The Spanish dictionary is typed against the English one, so a missing translation fails the type check.
 
 Stack: React, TypeScript, Vite, Dexie (IndexedDB), vite-plugin-pwa.
 
